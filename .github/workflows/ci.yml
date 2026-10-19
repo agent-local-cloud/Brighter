@@ -825,6 +825,34 @@ jobs:
       - name: GCP Purge Tests (service)
         run: dotnet test ./tests/Paramore.Brighter.Gcp.Tests/Paramore.Brighter.Gcp.Tests.csproj --filter "Category=GcpPubSubPurge&Requires!=PubSubEmulator&Fragile!=CI" --configuration Release --logger "console;verbosity=normal" --logger GitHubActions --blame -v n --blame-hang-timeout 5min --framework net10.0
 
+  spanner-localcloud-ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Start LocalCloud Spanner
+        id: localcloud
+        uses: agent-local-cloud/setup-localcloud@de6d236db036be4c8b96879392d22a1feb5047c6
+        with:
+          image: agentcloud/localcloud@sha256:6c619bcf17c56c08de45c60e8b5eac0b5d48317434b4abab3d3fb0c0150226b5
+          services: spanner
+          project-id: brighter-test
+      - name: Set up Spanner database
+        env:
+          LOCALCLOUD_CONTAINER_ID: ${{ steps.localcloud.outputs.container-id }}
+        run: |
+          SPANNER_EMULATOR_REST_HOST="$(docker port "$LOCALCLOUD_CONTAINER_ID" 5387/tcp)"
+          export SPANNER_EMULATOR_REST_HOST
+          bash setup-spanner-emulator.sh
+      - name: Spanner Tests
+        run: dotnet test ./tests/Paramore.Brighter.Gcp.Tests/Paramore.Brighter.Gcp.Tests.csproj --filter "Category=Spanner" --configuration Release --logger "console;verbosity=normal" --logger GitHubActions --blame -v n --blame-hang-timeout 5min --framework net10.0
+
   gcp-emulator-ci:
     runs-on: ubuntu-latest
     timeout-minutes: 30

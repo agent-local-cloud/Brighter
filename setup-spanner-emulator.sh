@@ -8,9 +8,8 @@ PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-brighter-tests}"
 INSTANCE_ID="brighter-spanner"
 DATABASE_ID="brightertests"
 EMULATOR_HOST="${SPANNER_EMULATOR_HOST:-localhost:9010}"
-# The emulator exposes gRPC on port 9010 and REST/HTTP on port 9020.
-# Client libraries use the gRPC port; health checks and admin REST calls use 9020.
-REST_HOST="${EMULATOR_HOST%:*}:9020"
+# Keep the standalone emulator default; CI can supply LocalCloud's mapped REST endpoint.
+REST_HOST="${SPANNER_EMULATOR_REST_HOST:-${EMULATOR_HOST%:*}:9020}"
 
 # Export environment variables for the current shell
 export SPANNER_EMULATOR_HOST="$EMULATOR_HOST"
@@ -35,7 +34,7 @@ done
 
 # Create the instance
 echo "Creating instance '$INSTANCE_ID'..."
-curl -s -X POST "http://$REST_HOST/v1/projects/$PROJECT_ID/instances" \
+curl -fsS -X POST "http://$REST_HOST/v1/projects/$PROJECT_ID/instances" \
     -H "Content-Type: application/json" \
     -d "{
         \"instanceId\": \"$INSTANCE_ID\",
@@ -49,7 +48,7 @@ echo ""
 
 # Create the database
 echo "Creating database '$DATABASE_ID'..."
-curl -s -X POST "http://$REST_HOST/v1/projects/$PROJECT_ID/instances/$INSTANCE_ID/databases" \
+curl -fsS -X POST "http://$REST_HOST/v1/projects/$PROJECT_ID/instances/$INSTANCE_ID/databases" \
     -H "Content-Type: application/json" \
     -d "{
         \"createStatement\": \"CREATE DATABASE \`$DATABASE_ID\`\"
